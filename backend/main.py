@@ -1,15 +1,22 @@
 from fastapi import FastAPI
 
+from app.core.config import settings
+from app.routers.health_routes import router as health_router
+
+
 app = FastAPI(
-    title="CallIT API",
+    title=settings.app_name,
     description="Help desk API for ticket management.",
-    version="0.1.0",
+    version=settings.app_version,
+    debug=settings.debug,
 )
 
+app.include_router(health_router)
 
-@app.get("/")
-def health_check() -> dict[str, str]:
+
+@app.get("/", tags=["Root"])
+def root() -> dict[str, str]:
     return {
         "status": "online",
-        "message": "CallIT API is running",
+        "message": "Welcome to CallIT API",
     }
