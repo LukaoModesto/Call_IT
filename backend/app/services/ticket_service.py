@@ -3,7 +3,11 @@ import uuid
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.ticket_model import Ticket
+from app.models.ticket_model import (
+    Ticket,
+    TicketPriority,
+    TicketStatus,
+)
 from app.models.user_model import User, UserRole
 from app.schemas.ticket_schema import TicketCreate
 
@@ -24,10 +28,15 @@ def create_ticket(
     database.commit()
     database.refresh(ticket)
 
-    return get_ticket_by_id(
+    created_ticket = get_ticket_by_id(
         database=database,
         ticket_id=ticket.id,
     )
+
+    if created_ticket is None:
+        raise RuntimeError("Ticket could not be retrieved after creation")
+
+    return created_ticket
 
 
 def get_ticket_by_id(
@@ -78,3 +87,76 @@ def user_can_view_ticket(
         return True
 
     return ticket.requester_id == current_user.id
+
+
+def assign_ticket(
+    database: Session,
+    ticket: Ticket,
+    technician: User | None,
+) -> Ticket:
+    ticket.assigned_to_id = (
+        technician.id
+        if technician is not None
+        else None
+    )
+
+    if (
+        technician is not None
+        and ticket.status == TicketStatus.OPEN
+    ):
+        ticket.status = TicketStatus.IN_TRIAGE
+
+    database.commit()
+    database.refresh(ticket)
+
+    updated_ticket = get_ticket_by_id(
+        database=database,
+        ticket_id=ticket.id,
+    )
+
+    if updated_ticket is None:
+        raise RuntimeError("Ticket could not be retrieved after assignment")
+
+    return updated_ticket
+
+
+def update_ticket_status(
+    database: Session,
+    ticket: Ticket,
+    new_status: TicketStatus,
+) -> Ticket:
+    ticket.status = new_status
+
+    database.commit()
+    database.refresh(ticket)
+
+    updated_ticket = get_ticket_by_id(
+        database=database,
+        ticket_id=ticket.id,
+    )
+
+    if updated_ticket is None:
+        raise RuntimeError("Ticket could not be retrieved after status update")
+
+    return updated_ticket
+
+
+def update_ticket_priority(
+    database: Session,
+    ticket: Ticket,
+    new_priority: TicketPriority,
+) -> Ticket:
+    ticket.priority = new_priority
+
+    database.commit()
+    database.refresh(ticket)
+
+    updated_ticket = get_ticket_by_id(
+        database=database,
+        ticket_id=ticket.id,
+    )
+
+    if updated_ticket is None:
+        raise RuntimeError("Ticket could not be retrieved after priority update")
+
+    return updated_ticket

@@ -37,6 +37,24 @@ class TicketCreate(BaseModel):
         return normalized_value
 
 
+class TicketAssign(BaseModel):
+    technician_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "Technician ID. Technicians may omit this field to assign "
+            "the ticket to themselves."
+        ),
+    )
+
+
+class TicketStatusUpdate(BaseModel):
+    status: TicketStatus
+
+
+class TicketPriorityUpdate(BaseModel):
+    priority: TicketPriority
+
+
 class TicketUserSummary(BaseModel):
     id: uuid.UUID
     full_name: str

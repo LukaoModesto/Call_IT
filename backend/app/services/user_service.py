@@ -30,6 +30,24 @@ def get_user_by_email(
     return database.scalar(statement)
 
 
+def get_support_user_by_id(
+    database: Session,
+    user_id: uuid.UUID,
+) -> User | None:
+    statement = select(User).where(
+        User.id == user_id,
+        User.role.in_(
+            [
+                UserRole.TECHNICIAN,
+                UserRole.ADMINISTRATOR,
+            ]
+        ),
+        User.is_active.is_(True),
+    )
+
+    return database.scalar(statement)
+
+
 def create_user(
     database: Session,
     user_data: UserCreate,
