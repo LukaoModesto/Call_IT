@@ -26,6 +26,13 @@ from app.services.ticket_service import (
     update_ticket_priority,
     update_ticket_status,
     user_can_view_ticket,
+    create_ticket_message,
+    get_ticket_messages,
+    user_can_write_ticket_message,
+)
+from app.schemas.ticket_message_schema import (
+    TicketMessageCreate,
+    TicketMessageResponse,
 )
 from app.services.user_service import get_support_user_by_id
 from app.schemas.ticket_history_schema import TicketHistoryResponse
@@ -110,6 +117,87 @@ def list_ticket_history(
     return get_ticket_history(
         database=database,
         ticket_id=ticket.id,
+    )
+
+@router.post(
+    "/{ticket_id}/messages",
+    response_model=TicketMessageResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def send_ticket_message(
+    ticket_id: uuid.UUID,
+    message_data: TicketMessageCreate,
+    database: Session = Depends(get_db),
+    current_user: User = Depends(get_current_any_user),
+):
+    ticket = get_existing_ticket(
+        ticket_id=ticket_id,
+        database=database,
+    )
+
+    if not user_can_view_ticket(
+        current_user=current_user,
+        ticket=ticket,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this ticket",
+        )
+
+    if not user_can_write_ticket_message(
+        current_user=current_user,
+        ticket=ticket,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to send messages in this ticket",
+        )
+
+    if (
+        current_user.role == UserRole.REQUESTER
+        and message_data.is_internal
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Requesters cannot create internal notes",
+        )
+
+    return create_ticket_message(
+        database=database,
+        ticket=ticket,
+        author=current_user,
+        content=message_data.content,
+        is_internal=message_data.is_internal,
+    )
+
+
+@router.get(
+    "/{ticket_id}/messages",
+    response_model=list[TicketMessageResponse],
+)
+def list_ticket_messages(
+    ticket_id: uuid.UUID,
+    database: Session = Depends(get_db),
+    current_user: User = Depends(get_current_any_user),
+):
+    ticket = get_existing_ticket(
+        ticket_id=ticket_id,
+        database=database,
+    )
+
+    if not user_can_view_ticket(
+        current_user=current_user,
+        ticket=ticket,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view this ticket conversation",
+        )
+
+    return get_ticket_messages(
+        database=database,
+        ticket_id=ticket.id,
+        current_user=current_user,
     )
 
 @router.get(

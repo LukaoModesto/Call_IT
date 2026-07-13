@@ -13,7 +13,9 @@ from app.models.ticket_model import (
     TicketStatus,
 )
 from app.models.user_model import User, UserRole
+from app.models.ticket_message_model import TicketMessage
 from app.schemas.ticket_schema import TicketCreate
+
 
 
 def add_ticket_history(
@@ -278,3 +280,80 @@ def update_ticket_priority(
         raise RuntimeError("Ticket could not be retrieved after priority update")
 
     return updated_ticket
+
+def create_ticket_message(
+    database: Session,
+    ticket: Ticket,
+    author: User,
+    content: str,
+    is_internal: bool,
+) -> TicketMessage:
+    message = TicketMessage(
+        ticket_id=ticket.id,
+        author_id=author.id,
+        content=content,
+        is_internal=is_internal,
+    )
+
+    database.add(message)
+    database.commit()
+
+    created_message = get_ticket_message_by_id(
+        database=database,
+        message_id=message.id,
+    )
+
+    if created_message is None:
+        raise RuntimeError("Message could not be retrieved after creation")
+
+    return created_message
+
+
+def get_ticket_message_by_id(
+    database: Session,
+    message_id: uuid.UUID,
+) -> TicketMessage | None:
+    statement = (
+        select(TicketMessage)
+        .options(
+            joinedload(TicketMessage.author),
+        )
+        .where(TicketMessage.id == message_id)
+    )
+
+    return database.scalar(statement)
+
+
+def get_ticket_messages(
+    database: Session,
+    ticket_id: uuid.UUID,
+    current_user: User,
+) -> list[TicketMessage]:
+    statement = (
+        select(TicketMessage)
+        .options(
+            joinedload(TicketMessage.author),
+        )
+        .where(TicketMessage.ticket_id == ticket_id)
+        .order_by(TicketMessage.created_at.asc())
+    )
+
+    if current_user.role == UserRole.REQUESTER:
+        statement = statement.where(
+            TicketMessage.is_internal.is_(False),
+        )
+
+    return list(database.scalars(statement).all())
+
+
+def user_can_write_ticket_message(
+    current_user: User,
+    ticket: Ticket,
+) -> bool:
+    if current_user.role == UserRole.ADMINISTRATOR:
+        return True
+
+    if current_user.role == UserRole.TECHNICIAN:
+        return ticket.assigned_to_id == current_user.id
+
+    return ticket.requester_id == current_user.id

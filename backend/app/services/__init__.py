@@ -8,6 +8,10 @@ from app.services.ticket_service import (
     update_ticket_priority,
     update_ticket_status,
     user_can_view_ticket,
+    create_ticket_message,
+    get_ticket_message_by_id,
+    get_ticket_messages,
+    user_can_write_ticket_message,
 )
 from app.services.user_service import (
     authenticate_user,
@@ -32,4 +36,8 @@ __all__ = [
     "update_ticket_priority",
     "update_ticket_status",
     "user_can_view_ticket",
+    "create_ticket_message",
+    "get_ticket_message_by_id",
+    "get_ticket_messages",
+    "user_can_write_ticket_message",
 ]

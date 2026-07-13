@@ -11,6 +11,7 @@ from app.database.base import Base
 
 if TYPE_CHECKING:
     from app.models.ticket_history_model import TicketHistory
+    from app.models.ticket_message_model import TicketMessage
     from app.models.ticket_model import Ticket
 
 
@@ -94,4 +95,9 @@ class User(Base):
         "TicketHistory",
         foreign_keys="TicketHistory.actor_id",
         back_populates="actor",
+    )
+    ticket_messages: Mapped[list["TicketMessage"]] = relationship(
+    "TicketMessage",
+    foreign_keys="TicketMessage.author_id",
+    back_populates="author",
     )

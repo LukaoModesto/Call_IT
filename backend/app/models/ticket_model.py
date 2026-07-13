@@ -11,6 +11,7 @@ from app.database.base import Base
 
 if TYPE_CHECKING:
     from app.models.ticket_history_model import TicketHistory
+    from app.models.ticket_message_model import TicketMessage
     from app.models.user_model import User
 
 
@@ -125,4 +126,10 @@ class Ticket(Base):
         back_populates="ticket",
         cascade="all, delete-orphan",
         order_by="TicketHistory.created_at",
+    )
+    messages: Mapped[list["TicketMessage"]] = relationship(
+    "TicketMessage",
+    back_populates="ticket",
+    cascade="all, delete-orphan",
+    order_by="TicketMessage.created_at",
     )
