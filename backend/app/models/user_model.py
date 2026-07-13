@@ -10,6 +10,7 @@ from app.database.base import Base
 
 
 if TYPE_CHECKING:
+    from app.models.ticket_history_model import TicketHistory
     from app.models.ticket_model import Ticket
 
 
@@ -87,4 +88,10 @@ class User(Base):
         "Ticket",
         foreign_keys="Ticket.assigned_to_id",
         back_populates="assigned_to",
+    )
+
+    ticket_history_entries: Mapped[list["TicketHistory"]] = relationship(
+        "TicketHistory",
+        foreign_keys="TicketHistory.actor_id",
+        back_populates="actor",
     )

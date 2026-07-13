@@ -21,13 +21,14 @@ from app.services.ticket_service import (
     assign_ticket,
     create_ticket,
     get_ticket_by_id,
+    get_ticket_history,
     get_tickets_for_user,
     update_ticket_priority,
     update_ticket_status,
     user_can_view_ticket,
 )
 from app.services.user_service import get_support_user_by_id
-
+from app.schemas.ticket_history_schema import TicketHistoryResponse
 
 router = APIRouter(
     prefix="/tickets",
@@ -83,6 +84,33 @@ def list_tickets(
         current_user=current_user,
     )
 
+@router.get(
+    "/{ticket_id}/history",
+    response_model=list[TicketHistoryResponse],
+)
+def list_ticket_history(
+    ticket_id: uuid.UUID,
+    database: Session = Depends(get_db),
+    current_user: User = Depends(get_current_any_user),
+):
+    ticket = get_existing_ticket(
+        ticket_id=ticket_id,
+        database=database,
+    )
+
+    if not user_can_view_ticket(
+        current_user=current_user,
+        ticket=ticket,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view this ticket history",
+        )
+
+    return get_ticket_history(
+        database=database,
+        ticket_id=ticket.id,
+    )
 
 @router.get(
     "/{ticket_id}",
@@ -158,6 +186,7 @@ def assign_ticket_to_technician(
         database=database,
         ticket=ticket,
         technician=technician,
+        actor=current_user,
     )
 
 
@@ -189,6 +218,7 @@ def change_ticket_status(
         database=database,
         ticket=ticket,
         new_status=status_data.status,
+        actor=current_user,
     )
 
 
@@ -220,4 +250,5 @@ def change_ticket_priority(
         database=database,
         ticket=ticket,
         new_priority=priority_data.priority,
+        actor=current_user,
     )

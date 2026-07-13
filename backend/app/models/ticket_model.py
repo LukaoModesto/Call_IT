@@ -1,11 +1,17 @@
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+
+
+if TYPE_CHECKING:
+    from app.models.ticket_history_model import TicketHistory
+    from app.models.user_model import User
 
 
 class TicketStatus(str, enum.Enum):
@@ -102,14 +108,21 @@ class Ticket(Base):
         nullable=False,
     )
 
-    requester = relationship(
+    requester: Mapped["User"] = relationship(
         "User",
         foreign_keys=[requester_id],
         back_populates="requested_tickets",
     )
 
-    assigned_to = relationship(
+    assigned_to: Mapped["User | None"] = relationship(
         "User",
         foreign_keys=[assigned_to_id],
         back_populates="assigned_tickets",
+    )
+
+    history_entries: Mapped[list["TicketHistory"]] = relationship(
+        "TicketHistory",
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+        order_by="TicketHistory.created_at",
     )

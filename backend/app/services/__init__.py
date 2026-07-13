@@ -1,7 +1,9 @@
 from app.services.ticket_service import (
+    add_ticket_history,
     assign_ticket,
     create_ticket,
     get_ticket_by_id,
+    get_ticket_history,
     get_tickets_for_user,
     update_ticket_priority,
     update_ticket_status,
@@ -16,12 +18,14 @@ from app.services.user_service import (
 )
 
 __all__ = [
+    "add_ticket_history",
     "assign_ticket",
     "authenticate_user",
     "create_ticket",
     "create_user",
     "get_support_user_by_id",
     "get_ticket_by_id",
+    "get_ticket_history",
     "get_tickets_for_user",
     "get_user_by_email",
     "get_user_by_id",

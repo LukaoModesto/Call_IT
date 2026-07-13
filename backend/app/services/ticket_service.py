@@ -3,6 +3,10 @@ import uuid
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, joinedload
 
+from app.models.ticket_history_model import (
+    TicketHistory,
+    TicketHistoryAction,
+)
 from app.models.ticket_model import (
     Ticket,
     TicketPriority,
@@ -10,6 +14,27 @@ from app.models.ticket_model import (
 )
 from app.models.user_model import User, UserRole
 from app.schemas.ticket_schema import TicketCreate
+
+
+def add_ticket_history(
+    database: Session,
+    ticket_id: uuid.UUID,
+    actor_id: uuid.UUID | None,
+    action: TicketHistoryAction,
+    old_value: str | None = None,
+    new_value: str | None = None,
+) -> TicketHistory:
+    history_entry = TicketHistory(
+        ticket_id=ticket_id,
+        actor_id=actor_id,
+        action=action,
+        old_value=old_value,
+        new_value=new_value,
+    )
+
+    database.add(history_entry)
+
+    return history_entry
 
 
 def create_ticket(
@@ -25,8 +50,17 @@ def create_ticket(
     )
 
     database.add(ticket)
+    database.flush()
+
+    add_ticket_history(
+        database=database,
+        ticket_id=ticket.id,
+        actor_id=requester.id,
+        action=TicketHistoryAction.CREATED,
+        new_value=TicketStatus.OPEN.value,
+    )
+
     database.commit()
-    database.refresh(ticket)
 
     created_ticket = get_ticket_by_id(
         database=database,
@@ -76,6 +110,22 @@ def get_tickets_for_user(
     return list(database.scalars(statement).all())
 
 
+def get_ticket_history(
+    database: Session,
+    ticket_id: uuid.UUID,
+) -> list[TicketHistory]:
+    statement = (
+        select(TicketHistory)
+        .options(
+            joinedload(TicketHistory.actor),
+        )
+        .where(TicketHistory.ticket_id == ticket_id)
+        .order_by(TicketHistory.created_at.asc())
+    )
+
+    return list(database.scalars(statement).all())
+
+
 def user_can_view_ticket(
     current_user: User,
     ticket: Ticket,
@@ -93,21 +143,61 @@ def assign_ticket(
     database: Session,
     ticket: Ticket,
     technician: User | None,
+    actor: User,
 ) -> Ticket:
-    ticket.assigned_to_id = (
-        technician.id
+    previous_technician_id = ticket.assigned_to_id
+    new_technician_id = technician.id if technician is not None else None
+
+    if previous_technician_id == new_technician_id:
+        current_ticket = get_ticket_by_id(
+            database=database,
+            ticket_id=ticket.id,
+        )
+
+        if current_ticket is None:
+            raise RuntimeError("Ticket could not be retrieved")
+
+        return current_ticket
+
+    ticket.assigned_to_id = new_technician_id
+
+    action = (
+        TicketHistoryAction.ASSIGNED
         if technician is not None
-        else None
+        else TicketHistoryAction.UNASSIGNED
     )
 
-    if (
-        technician is not None
-        and ticket.status == TicketStatus.OPEN
-    ):
+    add_ticket_history(
+        database=database,
+        ticket_id=ticket.id,
+        actor_id=actor.id,
+        action=action,
+        old_value=(
+            str(previous_technician_id)
+            if previous_technician_id is not None
+            else None
+        ),
+        new_value=(
+            str(new_technician_id)
+            if new_technician_id is not None
+            else None
+        ),
+    )
+
+    if technician is not None and ticket.status == TicketStatus.OPEN:
+        previous_status = ticket.status
         ticket.status = TicketStatus.IN_TRIAGE
 
+        add_ticket_history(
+            database=database,
+            ticket_id=ticket.id,
+            actor_id=actor.id,
+            action=TicketHistoryAction.STATUS_CHANGED,
+            old_value=previous_status.value,
+            new_value=TicketStatus.IN_TRIAGE.value,
+        )
+
     database.commit()
-    database.refresh(ticket)
 
     updated_ticket = get_ticket_by_id(
         database=database,
@@ -124,11 +214,25 @@ def update_ticket_status(
     database: Session,
     ticket: Ticket,
     new_status: TicketStatus,
+    actor: User,
 ) -> Ticket:
+    previous_status = ticket.status
+
+    if previous_status == new_status:
+        return ticket
+
     ticket.status = new_status
 
+    add_ticket_history(
+        database=database,
+        ticket_id=ticket.id,
+        actor_id=actor.id,
+        action=TicketHistoryAction.STATUS_CHANGED,
+        old_value=previous_status.value,
+        new_value=new_status.value,
+    )
+
     database.commit()
-    database.refresh(ticket)
 
     updated_ticket = get_ticket_by_id(
         database=database,
@@ -145,11 +249,25 @@ def update_ticket_priority(
     database: Session,
     ticket: Ticket,
     new_priority: TicketPriority,
+    actor: User,
 ) -> Ticket:
+    previous_priority = ticket.priority
+
+    if previous_priority == new_priority:
+        return ticket
+
     ticket.priority = new_priority
 
+    add_ticket_history(
+        database=database,
+        ticket_id=ticket.id,
+        actor_id=actor.id,
+        action=TicketHistoryAction.PRIORITY_CHANGED,
+        old_value=previous_priority.value,
+        new_value=new_priority.value,
+    )
+
     database.commit()
-    database.refresh(ticket)
 
     updated_ticket = get_ticket_by_id(
         database=database,
