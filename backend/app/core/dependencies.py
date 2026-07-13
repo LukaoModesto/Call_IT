@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Callable
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.database.session import get_db
-from app.models.user_model import User
+from app.models.user_model import User, UserRole
 from app.services.user_service import get_user_by_id
 
 
@@ -43,8 +44,8 @@ def get_current_user(
 
         user_id = uuid.UUID(subject)
 
-    except (JWTError, ValueError):
-        raise credentials_exception
+    except (JWTError, ValueError) as error:
+        raise credentials_exception from error
 
     user = get_user_by_id(
         database=database,
@@ -61,3 +62,44 @@ def get_current_user(
         )
 
     return user
+
+
+def require_roles(
+    *allowed_roles: UserRole,
+) -> Callable[..., User]:
+    def role_dependency(
+        current_user: User = Depends(get_current_user),
+    ) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this resource",
+            )
+
+        return current_user
+
+    return role_dependency
+
+
+get_current_requester = require_roles(
+    UserRole.REQUESTER,
+)
+
+get_current_technician = require_roles(
+    UserRole.TECHNICIAN,
+)
+
+get_current_administrator = require_roles(
+    UserRole.ADMINISTRATOR,
+)
+
+get_current_support_member = require_roles(
+    UserRole.TECHNICIAN,
+    UserRole.ADMINISTRATOR,
+)
+
+get_current_any_user = require_roles(
+    UserRole.REQUESTER,
+    UserRole.TECHNICIAN,
+    UserRole.ADMINISTRATOR,
+)
