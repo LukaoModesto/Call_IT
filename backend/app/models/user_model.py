@@ -1,11 +1,16 @@
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Enum, String, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+
+
+if TYPE_CHECKING:
+    from app.models.ticket_model import Ticket
 
 
 class UserRole(str, enum.Enum):
@@ -69,4 +74,17 @@ class User(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    requested_tickets: Mapped[list["Ticket"]] = relationship(
+        "Ticket",
+        foreign_keys="Ticket.requester_id",
+        back_populates="requester",
+        cascade="all, delete-orphan",
+    )
+
+    assigned_tickets: Mapped[list["Ticket"]] = relationship(
+        "Ticket",
+        foreign_keys="Ticket.assigned_to_id",
+        back_populates="assigned_to",
     )
