@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.routers.access_routes import router as access_router
 from app.routers.auth_routes import router as auth_router
 from app.routers.health_routes import router as health_router
+from app.routers.ticket_routes import router as ticket_router
 from app.routers.user_routes import router as user_router
 
 
@@ -18,6 +19,7 @@ app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(access_router)
+app.include_router(ticket_router)
 
 
 @app.get("/", tags=["Root"])
