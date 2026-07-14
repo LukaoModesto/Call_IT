@@ -14,7 +14,10 @@ from app.models.ticket_model import (
 )
 from app.models.user_model import User, UserRole
 from app.models.ticket_message_model import TicketMessage
+from app.models.category_model import Category
+
 from app.schemas.ticket_schema import TicketCreate
+
 
 
 
@@ -43,12 +46,15 @@ def create_ticket(
     database: Session,
     ticket_data: TicketCreate,
     requester: User,
+    category: Category,
 ) -> Ticket:
     ticket = Ticket(
         title=ticket_data.title,
         description=ticket_data.description,
         priority=ticket_data.priority,
         requester_id=requester.id,
+        category_id=category.id,
+        department_id=category.department_id,
     )
 
     database.add(ticket)

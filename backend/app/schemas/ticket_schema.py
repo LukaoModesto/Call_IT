@@ -26,6 +26,8 @@ class TicketCreate(BaseModel):
         examples=[TicketPriority.MEDIUM],
     )
 
+    category_id: uuid.UUID
+
     @field_validator("title", "description")
     @classmethod
     def normalize_text(cls, value: str) -> str:
@@ -72,6 +74,9 @@ class TicketResponse(BaseModel):
 
     requester_id: uuid.UUID
     assigned_to_id: uuid.UUID | None
+
+    department_id: uuid.UUID | None
+    category_id: uuid.UUID | None
 
     requester: TicketUserSummary
     assigned_to: TicketUserSummary | None

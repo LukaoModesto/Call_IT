@@ -6,6 +6,7 @@ from app.routers.auth_routes import router as auth_router
 from app.routers.health_routes import router as health_router
 from app.routers.ticket_routes import router as ticket_router
 from app.routers.user_routes import router as user_router
+from app.routers.catalog_routes import router as catalog_router
 
 
 app = FastAPI(
@@ -20,6 +21,7 @@ app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(access_router)
 app.include_router(ticket_router)
+app.include_router(catalog_router)
 
 
 @app.get("/", tags=["Root"])

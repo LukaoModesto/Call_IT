@@ -10,6 +10,8 @@ from app.database.base import Base
 
 
 if TYPE_CHECKING:
+    from app.models.category_model import Category
+    from app.models.department_model import Department
     from app.models.ticket_history_model import TicketHistory
     from app.models.ticket_message_model import TicketMessage
     from app.models.user_model import User
@@ -96,6 +98,26 @@ class Ticket(Base):
         index=True,
     )
 
+    department_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey(
+            "departments.id",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    category_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey(
+            "categories.id",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+        index=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -121,15 +143,26 @@ class Ticket(Base):
         back_populates="assigned_tickets",
     )
 
+    department: Mapped["Department | None"] = relationship(
+        "Department",
+        back_populates="tickets",
+    )
+
+    category: Mapped["Category | None"] = relationship(
+        "Category",
+        back_populates="tickets",
+    )
+
     history_entries: Mapped[list["TicketHistory"]] = relationship(
         "TicketHistory",
         back_populates="ticket",
         cascade="all, delete-orphan",
         order_by="TicketHistory.created_at",
     )
+
     messages: Mapped[list["TicketMessage"]] = relationship(
-    "TicketMessage",
-    back_populates="ticket",
-    cascade="all, delete-orphan",
-    order_by="TicketMessage.created_at",
+        "TicketMessage",
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+        order_by="TicketMessage.created_at",
     )

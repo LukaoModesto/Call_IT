@@ -35,7 +35,10 @@ from app.schemas.ticket_message_schema import (
     TicketMessageResponse,
 )
 from app.services.user_service import get_support_user_by_id
+from app.services.catalog_service import get_active_category_by_id
+
 from app.schemas.ticket_history_schema import TicketHistoryResponse
+
 
 router = APIRouter(
     prefix="/tickets",
@@ -71,10 +74,22 @@ def open_ticket(
     database: Session = Depends(get_db),
     current_user: User = Depends(get_current_any_user),
 ) -> Ticket:
+    category = get_active_category_by_id(
+        database=database,
+        category_id=ticket_data.category_id,
+    )
+
+    if category is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active category not found",
+        )
+
     return create_ticket(
         database=database,
         ticket_data=ticket_data,
         requester=current_user,
+        category=category,
     )
 
 
